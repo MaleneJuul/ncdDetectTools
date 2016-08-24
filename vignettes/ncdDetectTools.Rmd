@@ -1,0 +1,214 @@
+--- 
+title: "The core ncdDetect functionality" 
+author: "Malene Juul" 
+date: "24 August 2016" 
+output: pdf_document 
+---
+
+\subsection{ncdDetect example runs}
+The package \texttt{ncdDetectTools} contains the core functions used in the driver detection method ncdDetect. The function \texttt{ncdDetect} is developed to perform convolution, i.e. to calculate the 
+density function of the sum of independent discrete stochastic random 
+variables.
+
+The needed input to the \texttt{ncdDetect} function are the 
+the matrices \texttt{predictions}, \texttt{scores} and \texttt{observations} (the latter is optional) 
+which all have the same dimensionality. Each row represents a random variable, and each column represents a specific outcome of the variable.
+
+The matrix \texttt{predictions} contains the probabilities for the individual 
+stochastic variables. Each row must sum to one. The matrix \texttt{scores} 
+contains the corresponding scores and the matrix \texttt{observations} contains 
+1 in the fields that are observed, and 0 in the rest. Each row must contain 
+precisely one 1.
+
+
+```{r, warning = F, message = F} 
+library(ncdDetectTools)
+library(ggplot2)
+library(poibin)
+
+# import data to run examples
+data("example_data")
+```
+
+\subsubsection{Example 1: Throw two dice and sum up the eyes} Let $X$ and $Y$ be
+the outcomes of two throws with a die. Let $S$ be the sum of these outcomes. We 
+calculate the density function of $S$ with \texttt{ncdDetect}:
+
+```{r, warning = F, message = F} 
+# create matrices with :
+# (a) probabilities for a die showing 1-6 - each row corresponds to a die 
+# (b) associated scores - in this case a die showing x will give a score of x
+# (c) observations - assume that the first die show 3 and the second show 5
+
+(throwTwoDice <- example_data$throwTwoDice)
+
+# calculate the density function of S = X + Y and the p-value for the observed sum of 8
+ncdDetect(predictions = throwTwoDice$predictions, 
+          scores = throwTwoDice$scores, 
+          observations = throwTwoDice$observations)
+```
+
+
+\subsubsection{Example 2: The binomial case}
+Assume that the four random variables $X_1$, $X_2$, $X_3$ and $X_4$ each follow a Bernoulli(0.2) distribution. Then $Y = X_{1} + X_{2} + X_{3} + X_{4} \sim$ Binomial(4,0.2). In the following, we calculate the density function directly using ncdDetect, and compare the result with what is obtained using the \texttt{pbinom()} function. 
+
+```{r} 
+# create matrices with :
+# (a) probabilities - each row corresponds to one of the four random variables
+# (b) associated scores - these are 1 and 0 (outcomes of Bernoulli r.v.)
+
+(binomialExampleSmall <- example_data$binomialExampleSmall)
+
+# calculate the density function of Y = X1 + X2 + X3 + X4
+(ncdDetect_output <- ncdDetect(predictions = binomialExampleSmall$predictions, 
+                               scores = binomialExampleSmall$scores))
+
+# calulate the cdf
+ncdDetect_output$score_dist[, ncdDetect_cdf := cumsum(probability)]
+ncdDetect_output$score_dist[, probability := NULL]
+
+# compare to the results from pbinom() function
+binomial_result <- data.table(y = 0:4,
+                              binom_cdf = pbinom(q = 0:4, size = 4, prob = 0.2))
+
+setkey(binomial_result, y)
+setkey(ncdDetect_output$score_dist, y)
+(comparison <- binomial_result[ncdDetect_output$score_dist])
+
+# calculate total absolute error (TAE) between the two cdfs
+(TAE <- sum(abs(comparison[,binom_cdf - ncdDetect_cdf])))
+```
+
+A comparison of the cumulative distribution functions (cdf) is shown in the below figure.
+
+```{r, echo = F, fig.height=4, fig.width=10}
+# compare the two cdfs in a plot
+plot_dat <- rbind(comparison[, .(y, "cdf" = binom_cdf, "method" = "pbinom")],
+                  comparison[, .(y, "cdf" = ncdDetect_cdf, "method" = "ncdDetect")])
+
+ggplot(plot_dat, aes(x = y, y = cdf, color = method, size = as.numeric(as.factor(method)))) + 
+  geom_point() + theme_classic() + scale_size_continuous(guide = FALSE) +
+  theme(axis.line.x = element_line(color = "black"), axis.line.y = element_line(color = "black")) +
+  labs(title = paste("Binomial example, small\nTAE = ", signif(TAE, digits = 3), sep=""), 
+       x = "cumulative distribution function", y = "")
+```
+
+
+\subsubsection{Example 3: The binomial case, continued}
+Assume that the 500 random variables $X_1, \ldots, X_{500}$ each follow a Bernoulli(0.2) distribution. Then $Y = X_{1} + \ldots + X_{500} \sim$ Binomial(500,0.2). In the following, we calculate the density function directly using ncdDetect, and compare the result with what is obtained using the \texttt{pbinom()} function. 
+
+Note that if we're only interested in the output distribution up to a certain value, we can set a threshold to save computations. In this case, we only calculate the density function for $P(X = x), x \in \{0, \ldots, 250\}$. The output is still a density function, but the probability mass of $P(X > 250)$ is aggregated together in $P(X = 251)$ This feature can be convenient to avoid calculating probabilties of a potential uninteresting large tail.
+
+```{r} 
+# create matrices with :
+# (a) probabilities - each row corresponds to one of the 500 random variables
+# (b) associated scores - these are 1 and 0 (outcomes of Bernoulli r.v.)
+
+binomialExampleLarge <- example_data$binomialExampleLarge
+as.data.table(binomialExampleLarge$predictions)
+as.data.table(binomialExampleLarge$scores)
+
+# calculate the density function of Y = X1 + ... + X500 with threshold = 250
+(ncdDetect_output <- ncdDetect(predictions = binomialExampleLarge$predictions, 
+                               scores = binomialExampleLarge$scores, 
+                               thres = 250 + 1))
+
+# calulate the cdf
+ncdDetect_output$score_dist[, ncdDetect_cdf := cumsum(probability)]
+ncdDetect_output$score_dist[, probability := NULL]
+ncdDetect_output$score_dist <- ncdDetect_output$score_dist[y <= 250,]
+
+# compare to the results from pbinom() function
+binomial_result <- data.table(y = 0:250,
+                              binom_cdf = pbinom(q = 0:250, size = 500, prob = 0.2))
+setkey(binomial_result, y)
+setkey(ncdDetect_output$score_dist, y)
+(comparison <- binomial_result[ncdDetect_output$score_dist])
+
+# calculate total absolute error (TAE) between the two cdfs
+(TAE <- sum(abs(comparison[,binom_cdf - ncdDetect_cdf])))
+```
+
+A comparison of the cdfs is shown in the below figure.
+
+```{r, echo = F, fig.height=4, fig.width=10}
+# compare the two cdfs in a plot
+plot_dat <- rbind(comparison[, .(y, "cdf" = binom_cdf, "method" = "pbinom")],
+                  comparison[, .(y, "cdf" = ncdDetect_cdf, "method" = "ncdDetect")])
+
+ggplot(plot_dat, aes(x = y, y = cdf, color = method, size = as.numeric(as.factor(method)))) + 
+  geom_point() + theme_classic() + scale_size_continuous(guide = FALSE) +
+  theme(axis.line.x = element_line(color = "black"), axis.line.y = element_line(color = "black")) +
+  labs(title = paste("Binomial example, large\nTAE = ", signif(TAE, digits = 3), sep=""), 
+       x = "cumulative distribution function", y = "")
+```
+
+\subsubsection{Example 4: The Poisson-binomial case}
+Assume that the random variables $X_i$, $i \in \{1,\ldots, 1000\}$ follow a Bernoulli($p_i$) distribution. Then $Y = \sum_{i = 1}^{1000}X_i$ follow a Poisson-binomial distribution. In the following, we calculate the density function directly using ncdDetect, and compare the result with what is obtained using the \texttt{ppoibin()} function from the \texttt{poibin} R-package (\url{https://cran.r-project.org/web/packages/poibin/index.html}).
+
+```{r} 
+# create matrices with :
+# (a) probabilities - each row corresponds to one of the 1,000 random variables
+# (b) associated scores - these are 1 and 0 (outcomes of Bernoulli r.v.)
+
+poissonBinomialExample <- example_data$poissonBinomialExample
+as.data.table(poissonBinomialExample$predictions)
+as.data.table(poissonBinomialExample$scores)
+
+# calculate the density function of Y = X1 + ... + X1000
+(ncdDetect_output <- ncdDetect(predictions = poissonBinomialExample$predictions, 
+                               scores = poissonBinomialExample$scores))
+
+# calulate the cdf
+ncdDetect_output$score_dist[, ncdDetect_cdf := cumsum(probability)]
+ncdDetect_output$score_dist[, probability := NULL]
+
+# compare to the results from ppoibin() function
+poibin_result <- data.table(y = 0:1000,
+                            poibin_cdf = ppoibin(kk = 0:1000, 
+                                                 pp = poissonBinomialExample$predictions[,1], 
+                                                 method = "DFT-CF"))
+setkey(poibin_result, y)
+setkey(ncdDetect_output$score_dist, y)
+(comparison <- poibin_result[ncdDetect_output$score_dist])
+
+# calculate total absolute error (TAE) between the two cdfs
+(TAE <- sum(abs(comparison[,poibin_cdf - ncdDetect_cdf])))
+```
+
+A comparison of the cdfs is shown in the below figure.
+
+```{r, echo = F, fig.height=4, fig.width=10}
+# compare the two cdfs in a plot
+plot_dat <- rbind(comparison[, .(y, "cdf" = poibin_cdf, "method" = "poibin")],
+                  comparison[, .(y, "cdf" = ncdDetect_cdf, "method" = "ncdDetect")])
+
+ggplot(plot_dat, aes(x = y, y = cdf, color = method, size = as.numeric(as.factor(method)))) + 
+  geom_point() + theme_classic() + scale_size_continuous(guide = FALSE) +
+  theme(axis.line.x = element_line(color = "black"), axis.line.y = element_line(color = "black")) +
+  labs(title = paste("Poisson-binomial example\nTAE = ", signif(TAE, digits = 3), sep=""), 
+       x = "cumulative distribution function", y = "")
+```
+
+\subsubsection{Example 5: Adding discrete random variables with different sizes of outcome space}
+In the above examples, \texttt{ncdDetect} has been applied to random variables with identical sizes of outcome space. By using the underlying function \texttt{convolution()}, it is possible to convolute discrete random variables of different dimensions. The input data has a slightly different format, as described in the example below in which we add three discrete random variables.
+
+```{r} 
+# create a data.table with columns
+#   x - a numeric indicator unique for each random variable
+#   y - outcome value (score)
+#   probability - probability of the associated y
+# the subset of the data.table with a unique value of x corresponds to a random variable,
+# and the probabilities within each x must thus sum to 1
+
+# we consider three random variables (x = 1, 2, 3), 
+# with densities given by columns "y" and "probability":
+(generalConvolution <- example_data$generalConvolution)
+
+convolution(generalConvolution)
+```
+
+\subsubsection{Session information}
+```{r} 
+sessionInfo()
+```

@@ -1,0 +1,9 @@
+useDynLib(ncdDetectTools, .registration=TRUE)
+importFrom(Rcpp, evalCpp)
+import(data.table)
+import(RcppArmadillo)
+exportPattern("^[[:alpha:]]+")
+export(ncdDetect)
+export(convolution)
+
+
