@@ -5,3 +5,15 @@ convolution_body <- function(dataset, threshold, integers) {
     .Call('ncdDetectTools_convolution_body', PACKAGE = 'ncdDetectTools', dataset, threshold, integers)
 }
 
+cumulant <- function(t, p, s) {
+    .Call('ncdDetectTools_cumulant', PACKAGE = 'ncdDetectTools', t, p, s)
+}
+
+cumulantD1 <- function(t, p, s) {
+    .Call('ncdDetectTools_cumulantD1', PACKAGE = 'ncdDetectTools', t, p, s)
+}
+
+cumulantD2 <- function(t, p, s) {
+    .Call('ncdDetectTools_cumulantD2', PACKAGE = 'ncdDetectTools', t, p, s)
+}
+

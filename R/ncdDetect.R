@@ -12,7 +12,9 @@
 #'     observations = matrix(c(0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0), nrow = 2, byrow = TRUE))
 #' ncdDetect(predictions = matrix(rep(1/6, 12), nrow = 2), scores = matrix(rep(1:6, 2), nrow = 2, byrow = TRUE), thres = 6)
 #' ncdDetect(predictions = matrix(rep(1/6, 12), nrow = 2), scores = matrix(rep(1:6, 2), nrow = 2, byrow = TRUE))
-
+#' @useDynLib ncdDetectTools
+#' @import data.table
+#' @export
 ncdDetect <- function(predictions, scores, observations = NA, thres = NA) {
   
 

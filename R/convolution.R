@@ -9,7 +9,7 @@
 #'     probability = c(3/4, 1/4, rep(1/3, 3), (1:4)/10)))
 #' convolution(dat = data.table(x = c(rep(1, 2), rep(2, 3), rep(3, 4)), y = c(1:2, 1:3, 1:4), 
 #'     probability = c(3/4, 1/4, rep(1/3, 3), (1:4)/10)), threshold = 6)
-
+#' @export
 convolution <- function(dat, threshold=NA, verbose=F) {
   
   require(data.table)
