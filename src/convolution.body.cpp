@@ -1,8 +1,8 @@
-#include <RcppArmadillo.h>
-#include <armadillo>
-using namespace arma;
+#include "RcppArmadillo.h"
 
 // [[Rcpp::depends(RcppArmadillo)]]
+
+using namespace arma;
 
 // [[Rcpp::export]]
 arma::mat convolution_body(arma::mat dataset, int threshold, arma::vec integers) {
@@ -67,6 +67,5 @@ arma::mat convolution_body(arma::mat dataset, int threshold, arma::vec integers)
   // output is returned
   return output ;
 }
-
 
 
