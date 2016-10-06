@@ -17,9 +17,17 @@
 #' @importFrom Rcpp evalCpp
 #' @export
 saddlepoint <- function(t, dat, lattice = 1L, log = T){
+  # Sort data frame after x
+  dat <- dat[order(x),]
+  
+  x <- dat$x
   p <- dat$probability
   s <- dat$y
-  stopifnot(all(s > 0))
+  
+  stopifnot(all(s >= 0))
+  
+  # Return 0 and 1 if outside range
+  
   # Giver saddelpunkts approksimationen paa log-skala
   # Use a combination of bisection and Newton raphson
   
@@ -32,17 +40,18 @@ saddlepoint <- function(t, dat, lattice = 1L, log = T){
   
   iter <- 0
   while(abs(theta - theta_old) > 1e-8){
+    cumDer <- cumulantDerivatives(theta, x, p, s)
     # For convergence properties
     iter <- iter + 1
     theta_old <- theta
     
     # Newton raphson
-    val <- cumulantD1(theta, p, s) - t
+    val <- cumDer[2] - t
     if(val < 0 && theta > theta_largest_negative)
       theta_largest_negative <- theta
     if(val > 0 && theta < theta_smallest_positive)
       theta_smallest_positive <- theta
-    deriv <- cumulantD2(theta, p, s)
+    deriv <- cumDer[3]
     step <- - val / deriv 
     
     # Next theta if newton raphson
@@ -53,14 +62,16 @@ saddlepoint <- function(t, dat, lattice = 1L, log = T){
     }
   }
   
+  cumDer <- cumulantDerivatives(theta, x, p, s)
+  
   # El approximazione
-  v <- cumulantD2(theta, p, s)
+  v <- cumDer[3]
   
   # Uden lattice-korrektion
   if(lattice == 0){
-    ret <- cumulant(theta, p, s)-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T)
+    ret <- cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T)
   } else{
-    ret <- cumulant(theta, p, s)-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T) +
+    ret <- cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T) +
             log(abs(theta*lattice))- log((1-exp(-lattice*abs(theta))))
   }
   

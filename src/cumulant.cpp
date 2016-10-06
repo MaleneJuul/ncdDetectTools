@@ -1,46 +1,51 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-double c0(double t, double p, double s){
-  return log(1-p+p*exp(s*t));
-}
-
-double c1(double t, double p, double s){
-  double num = s*p*exp(s*t);
-  double den = 1-p+p*exp(s*t);
-  return num/den;
-}
-
-double c2(double t, double p, double s){
-  double num = s*s*p*exp(s*t)*(1-p);
-  double sqrtden = (1-p+p*exp(s*t));
-  return num/sqrtden/sqrtden;
-}
-
-// [[Rcpp::export]]
-double cumulant(double t, NumericVector p, NumericVector s) {
-  /* Return cumulant generating function*/
+double phi(double t, NumericVector & p, NumericVector & s, int idxStart, int idxStop){
   double ret = 0;
-  for(int i = 0; i < p.size(); ++i)
-    ret += c0(t, p[i], s[i]);
+  for(int i = idxStart; i < idxStop; ++i){
+    ret += p[i]*exp(t*s[i]);
+  }
+  return ret;
+}
+
+double phiD1(double t, NumericVector & p, NumericVector & s, int idxStart, int idxStop){
+  double ret = 0;
+  for(int i = idxStart; i < idxStop; ++i){
+    ret += p[i]*s[i]*exp(t*s[i]);
+  }
+  return ret;
+}
+
+double phiD2(double t, NumericVector & p, NumericVector & s, int idxStart, int idxStop){
+  double ret = 0;
+  for(int i = idxStart; i < idxStop; ++i){
+    ret += p[i]*s[i]*s[i]*exp(t*s[i]);
+  }
   return ret;
 }
 
 // [[Rcpp::export]]
-double cumulantD1(double t, NumericVector p, NumericVector s) {
-  /* Return first derivative of cumulant generating function */
-  double ret = 0;
-  for(int i = 0; i < p.size(); ++i)
-    ret += c1(t, p[i], s[i]);
+NumericVector cumulantDerivatives(double t, IntegerVector x, NumericVector p, NumericVector s) {
+  // Assert in R that all vectors have the same length
+  // Return cumulant and first and second derivative
+  NumericVector ret(3);
+
+  int idxStart = 0; 
+  // Loop over vector
+  for(int i = 1; i <= x.length(); ++i){
+    if(i == x.length() || x(i-1) != x(i)){
+      double phi_   = phi(t, p, s, idxStart, i);
+      double phiD1_ = phiD1(t, p, s, idxStart, i);
+      double phiD2_ = phiD2(t, p, s, idxStart, i);
+
+      ret(0) += log( phi_ );
+      ret(1) += phiD1_ / phi_;
+      ret(2) += (phi_ * phiD2_ - phiD1_ * phiD1_) / phi_ / phi_;
+
+      idxStart = i;
+    }
+  }
+
   return ret;
 }
-
-// [[Rcpp::export]]
-double cumulantD2(double t, NumericVector p, NumericVector s) {
-  /* Return second derivative of cumulant generating function */
-  double ret = 0;
-  for(int i = 0; i < p.size(); ++i)
-    ret += c2(t, p[i], s[i]);
-  return ret;
-}
-
