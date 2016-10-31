@@ -21,7 +21,7 @@ logistic <- function(x){
 #' convolution(dat = data.table(x = c(rep(1, 2), rep(2, 3), rep(3, 4)), y = c(1:2, 1:3, 1:4), 
 #'     probability = c(3/4, 1/4, rep(1/3, 3), (1:4)/10)), threshold = 6)
 #' @export
-ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N = 10, method = c("naive", "is", "numeric"), observations = NA, thres = NA) {
+ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N = 10, method = c("naive", "numeric"), observations = NA, thres = NA) {
   # Make initial checks on input --------------------------------------------
   
   observation_available <- F
@@ -102,9 +102,21 @@ ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N =
   ###
   # Integrate out random effect
   ###
+  
+  # Pre-computation for methods
+  if (method == "numeric"){
+    val <- seq(-2*overdispersion, 2*overdispersion, length.out = N)
+    weight <- dnorm(val, sd = overdispersion)*c(1,rep(2,N-2),1)
+    weight <- weight / sum(weight)
+  }
+  if (method == "naive"){
+    val <- rnorm(N, 0, sd = overdispersion)
+    weight <- rep(1/N, N)
+  }
+  
   conv_results <- list()
   for(i in 1:N){
-    random_effect <- rnorm(1, 0, sd = overdispersion)
+    random_effect <- val[i]
     
     pred_cols <- setdiff(names(predictions), "x")[-1]
     pred_cols <- setdiff(names(predictions), "x")
@@ -143,7 +155,8 @@ ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N =
   # Average over results
   conv_results_df <- suppressWarnings(Reduce(function(x,y){merge(as.data.frame(x),as.data.frame(y), all = T, by = "y")}, conv_results))
   conv_results_df[is.na(conv_results_df)] <- 0
-  score_dist <- rowMeans(conv_results_df[,-1])
+  score_dist <- data.frame(conv_results_df$y, rowSums(sweep(conv_results_df[,-1], MARGIN = 2, STATS =  weight, FUN = "*")))
+  names(score_dist) <- c("y", "probability")
   
   # Get observed score and p-value ------------------------------------------
   
@@ -151,7 +164,7 @@ ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N =
     
     obs_score <- dat[observation == 1, sum(y)]
     
-    p_value <- mean(sapply(conv_results, FUN = function(score_dist_df){score_dist_df[y >= 10, sum(probability)]}))
+    p_value <- sum(score_dist$probability[score_dist$y >= obs_score])
     
   }
   
