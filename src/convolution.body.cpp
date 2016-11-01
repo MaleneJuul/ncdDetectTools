@@ -25,7 +25,7 @@ arma::mat convolution_body(arma::mat dataset, int threshold, arma::vec integers)
   
   for (int j = 0; j < yi.n_elem; j = j + 1 ) {
     if (yi[j] <= threshold) {
-      p_out(yi[j]) = pi[j];
+      p_out(yi[j]) = p_out(yi[j]) + pi[j];
     }
   }
   
