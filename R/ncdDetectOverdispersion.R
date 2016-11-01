@@ -21,7 +21,7 @@ logistic <- function(x){
 #' convolution(dat = data.table(x = c(rep(1, 2), rep(2, 3), rep(3, 4)), y = c(1:2, 1:3, 1:4), 
 #'     probability = c(3/4, 1/4, rep(1/3, 3), (1:4)/10)), threshold = 6)
 #' @export
-ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N = 10, method = c("naive", "numeric"), observed_score, return_dist = F) {
+ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N = 10, method = c("naive", "numeric", "trapez"), observed_score, return_dist = F) {
   # Make initial checks on input --------------------------------------------
   
 
@@ -78,9 +78,18 @@ ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N =
   
   # Pre-computation for methods
   if (method == "numeric"){
-    val <- seq(-2*overdispersion, 2*overdispersion, length.out = N)
-    weight <- dnorm(val, sd = overdispersion)*c(1,rep(2,N-2),1)
-    weight <- weight / sum(weight)
+    val <- seq(-3*overdispersion, 3*overdispersion, length.out = N)
+    m <- diff(pnorm(c(-Inf,val,Inf), sd = overdispersion)) # N+1
+    weight <- (m[1:N]+m[2:(N+1)])/2
+    weight[1] <- weight[1] + m[1]/2 # Make constant approximation for remainder of integrand
+    weight[N] <- weight[N] + m[N+1]/2 # Same
+  }
+  if (method == "trapez"){
+    # Transform density to bounded interval (-pi/2; pi/2)
+    y <- seq(-pi/2,pi/2,length.out = N+2)[2:(N+1)]
+    val <- tan(y) / overdispersion / 15 # x
+    weight <- pi/(N+1)/2*rep(2,N) # Trapezoidal weight
+    weight <- weight * (1+tan(y)^2)/overdispersion/15 * dnorm(val, 0, overdispersion)
   }
   if (method == "naive"){
     val <- rnorm(N, 0, sd = overdispersion)
@@ -166,7 +175,7 @@ ncdDetectOverdispersion <- function(predictions, scores, overdispersion = 0, N =
     
     output_index <- output_index + 1
     
-    output_od[[output_index]] <- data.table(score = obs_score, p_value = score_dist[y < obs_score, 1 - sum(probability)], type = method)
+    output_od[[output_index]] <- data.table(score = obs_score, p_value = score_dist[y < obs_score, sum(weight) - sum(probability)], type = method)
     
   }
   
