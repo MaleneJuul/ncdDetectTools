@@ -12,10 +12,8 @@
 #' @export
 convolution <- function(dat, threshold=NA, verbose=F) {
   
-  require(data.table)
   
-  # make sure that the x's has no "jumps" (1:dat[. .N])
-  # -------------
+  # make sure that the x’s have no ‘jumps’ (1:N) ----------------------------
   tmp_x <- data.table(x = dat[, unique(x)])
   setkey(tmp_x,x)
   tmp_x[, x_new := 1:.N]
@@ -23,10 +21,9 @@ convolution <- function(dat, threshold=NA, verbose=F) {
   dat <- tmp_x[dat][, .(x_new, probability, y)]
   setnames(dat, c("x", "probability", "y"))
   setkey(dat, x)
-
   
-  # set threshold
-  # -------------
+  
+  # set threshold -----------------------------------------------------------
   max_possible_score <- dat[, max(y), by = x][, sum(V1)]
   if (is.na(threshold)) {
     thres <- max_possible_score
@@ -35,46 +32,17 @@ convolution <- function(dat, threshold=NA, verbose=F) {
   }
   
   
-  # set dummy vector ints
-  # -------------
-  ints <- 0:thres
+  # set dummy vector of integers --------------------------------------------
+  ints <- 0:(thres+1)
   
   
-  # do calculations
-  # -------------
-
-  out <- as.data.table(convolution_body(as.matrix(dat[, list(y, probability, x)]), threshold=thres, integers=ints))
+  # perform convolution -----------------------------------------------------
+  out <- as.data.table(convolution_body(as.matrix(dat[, list(y, probability, x)]), threshold=(thres+1), integers=ints))
   setnames(out, c("y", "probability"))
   
   
-  # if out contains no rows - i.e. if the threshold is set too low - 
-  # recalculate with threshold set to max possible score
-  # -------------
-  if (out[, .N] == 0) {
-    cat("the original convoluted distribution contains no rows! Calculating again without a threshold\n\n")
-    thres <- max_possible_score
-    ints <- 0:thres
-    out <- as.data.table(convolution_body(as.matrix(dat[, list(y, probability, x)]), threshold=thres, integers=ints))
-    setnames(out, c("y", "probability"))
-  }
   
-  
-  # only add line in the end if a threshold is set
-  if (!is.na(threshold)) {
-    
-    # add line at the bottom to capture the remaining probability mass (only if needed)
-    # -------------
-    if (out[, sum(probability)] < 1) {
-      
-      if (verbose) cat("an extra line is added to the distribution to catch the remaining probability mass")
-      
-      lastLine <- data.table(y = out[, max(y) + 1], probability = out[, 1-sum(probability)])
-      out <- rbindlist(list(out, lastLine))
-    }
-  }
-
-  # return results
-  # -------------
+  # return results ----------------------------------------------------------
   return(out)
   
 }
