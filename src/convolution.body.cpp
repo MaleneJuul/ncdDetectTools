@@ -1,29 +1,28 @@
 #include <RcppArmadillo.h>
 #include <armadillo>
-using namespace arma;
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::export]]
 
 
-mat convolution_body(mat dataset, int threshold, vec integers) {
+arma::mat convolution_body(arma::mat dataset, int threshold, arma::vec integers) {
     
     // construct needed vectors and integers
-    vec p_out = zeros<vec> (threshold + 1) ;
-    vec p_tmp = zeros<vec> (threshold + 1) ;
+    arma::vec p_out = arma::zeros<arma::vec> (threshold + 1) ;
+    arma::vec p_tmp = arma::zeros<arma::vec> (threshold + 1) ;
     
-    vec y = dataset.col(0) ;
-    vec p = dataset.col(1) ;
-    vec x = dataset.col(2) ;
+    arma::vec y = dataset.col(0) ;
+    arma::vec p = dataset.col(1) ;
+    arma::vec x = dataset.col(2) ;
     
     int max_x = x.max() ;
     int min_x = x.min() ;
     
     // set probabilities for the first x-value
-    uvec indices = find(x == min_x) ;
+    arma::uvec indices = find(x == min_x) ;
     
-    vec yi = y.elem(indices) ;
-    vec pi = p.elem(indices) ;
+    arma::vec yi = y.elem(indices) ;
+    arma::vec pi = p.elem(indices) ;
     
     for (int j = 0; j < yi.n_elem; j = j + 1 ) {
         if (yi[j] <= threshold) {
@@ -40,8 +39,8 @@ mat convolution_body(mat dataset, int threshold, vec integers) {
     }
     
     
-    uvec non_zero_ps = find(p_out != 0) ;
-    vec non_zero_ys = integers(non_zero_ps) ;
+    arma::uvec non_zero_ps = find(p_out != 0) ;
+    arma::vec non_zero_ys = integers(non_zero_ps) ;
     
     // go through the remaining x-values
     for (int i = (min_x + 1); i <= max_x; i = i + 1 ) {
