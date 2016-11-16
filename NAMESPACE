@@ -3,6 +3,7 @@
 export(convolution)
 export(ncdDetect)
 export(ncdDetectOverdispersion)
+export(ncdDetectOverdispersionSaddlepoint)
 export(saddlepoint)
 import(data.table)
 importFrom(Rcpp,evalCpp)
