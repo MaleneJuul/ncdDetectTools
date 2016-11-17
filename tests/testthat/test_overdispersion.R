@@ -7,10 +7,12 @@ test_that("Betabinomial (overdispersion) distribution 2 columns",{
   observed_score <- 10
   overdispersion <- 0.3
   
-  res <- ncdDetectOverdispersion(predictions, scores, overdispersion, N = 100, method = "naive", observed_score = observed_score)[type == "naive", p_value]
+  res <- ncdDetectOverdispersion(predictions, scores, overdispersion, N = 100, method = "naive", observed_score = observed_score)
+  score_dist <- rbindlist(res$score_dist_overdispersion)[, .("probability" = sum(probability*weight)), by = y]
+  res_naive_10 <- score_dist[y >= 10, sum(probability)]
   bbinom_p_value <- VGAM::dbetabinom(10, 1000, 0.001, overdispersion^2*0.001/(1-0.001), log = T)
 
-  expect_lt(abs(log(res)-bbinom_p_value), log(3)) # Within a factor 2 using the naive approach
+  expect_lt(abs(log(res_naive_10)-bbinom_p_value), log(3)) # Within a factor 2 using the naive approach
 })
 
 
@@ -30,11 +32,14 @@ test_that("Betabinomial (overdispersion) distribution 3 columns",{
   # Numeric Integration
   res_numer <- ncdDetectOverdispersion(predictions, scores, overdispersion, N = 100, method = "numeric", observed_score = observed_score)
 
+  
+  score_dist <- rbindlist(res_numer$score_dist_overdispersion)[, .("probability" = sum(probability*weight)), by = y]
+  score_dist_no_od <- res_numer$score_dist_no_overdispersion
   # Expect overdispersion correction gives less significant p-values
-  res_numer_5  <- res_numer[score == 5 & type == "numeric", p_value]
-  res_numer_10 <- res_numer[score == 10 & type == "numeric", p_value]
-  expect_gt( res_numer_5, res_numer[score == 5 & type == "no_overdispersion", p_value] )
-  expect_gt( res_numer_10, res_numer[score == 10 & type == "no_overdispersion", p_value] )
+  res_numer_5  <- score_dist[y >= 5, sum(probability)]
+  res_numer_10 <- score_dist[y >= 10, sum(probability)]
+  expect_gt( res_numer_5, score_dist_no_od[y >= 5, sum(probability)])
+  expect_gt( res_numer_10, score_dist_no_od[y >= 10, sum(probability)] )
   
   # Expect reasonably close to value obtained by naive sampling
   expect_lt( abs(log(res_numer_5)  - log(7.346926e-03)), log(1.50)) # With-in 50% of the correct value
