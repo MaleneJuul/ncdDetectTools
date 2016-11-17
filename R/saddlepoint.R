@@ -38,7 +38,6 @@ saddlepoint <- function(t, dat, lattice = 1L, log = T){
   lower_than_expected <- t < expected_score
   t <- ifelse(lower_than_expected, t - lattice, t)
   if(lower_than_expected && (t <= min_score + lattice) ){
-    cat("Well hello")
     # Case not well-handled by saddlepoint approximation
     # 1 - probability that all variables takes minimum value
     ret <- prod(dat[, .("min_y" = min(y), probability, y), x][y == min_y, .(probability)])
