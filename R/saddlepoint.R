@@ -6,8 +6,7 @@
 #' \deqn{P(s_1X_1+s_2X_2\ldots s_NX_N > t)}.
 #' 
 #' @param t   Point where tail probability is evaluated (note this function is not vectorized over t)
-#' @param p   Probabilities of each Bernouilli trial
-#' @param s   Score associated with each trial
+#' @param dat A data.table with columns 'x', 'y', and 'probabilities'. Column 'x' is a numeric indicator unique for each random variable to be convoluted together. Column 'y' is the outcome value, and colum 'probabilities' contains the probability corresponding to each value of the 'y' column.
 #' @param lattice Lattice size in minimal lattice
 #' @param log Return log probability
 #' 
@@ -27,7 +26,24 @@ saddlepoint <- function(t, dat, lattice = 1L, log = T){
   stopifnot(all(s >= 0))
   
   # Return 0 and 1 if outside range
+  min_score <- dat[,min(y), by = x][,sum(V1)]
+  if(t == min_score)
+    return(ifelse(log, 0, 1))
+  max_score <- dat[,max(y), by = x][,sum(V1)]
+  if(t > max_score)
+    return(ifelse(log, -Inf, 0))
   
+  # Compute expected score
+  expected_score <- dat[,sum(y*probability)]
+  lower_than_expected <- t < expected_score
+  t <- ifelse(lower_than_expected, t - lattice, t)
+  if(lower_than_expected && (t <= min_score + lattice) ){
+    cat("Well hello")
+    # Case not well-handled by saddlepoint approximation
+    # 1 - probability that all variables takes minimum value
+    ret <- prod(dat[, .("min_y" = min(y), probability, y), x][y == min_y, .(probability)])
+    return( ifelse(log, log1p(-ret), 1-ret) )
+  }
   # Giver saddelpunkts approksimationen paa log-skala
   # Use a combination of bisection and Newton raphson
   
@@ -69,10 +85,18 @@ saddlepoint <- function(t, dat, lattice = 1L, log = T){
   
   # Uden lattice-korrektion
   if(lattice == 0){
-    ret <- cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T)
+    
+    ret <- ifelse(lower_than_expected,
+                  log( - expm1(cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = T, log.p = T)) ),
+                  cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T)
+    )
   } else{
-    ret <- cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T) +
-            log(abs(theta*lattice))- log((1-exp(-lattice*abs(theta))))
+    ret <- ifelse(lower_than_expected,
+                  log( -expm1(cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = T, log.p = T) +
+                             log(abs(theta*lattice))- log((1-exp(-lattice*abs(theta))))) ),
+                  cumDer[1]-t*theta+theta^2*v/2+pnorm(theta*sqrt(v), lower.tail = F, log.p = T) +
+                    log(abs(theta*lattice))- log((1-exp(-lattice*abs(theta))))
+    )
   }
   
   ifelse(log, ret, exp(ret))
