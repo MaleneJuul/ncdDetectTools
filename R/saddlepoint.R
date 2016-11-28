@@ -50,12 +50,29 @@ saddlepoint <- function(t, dat, lattice = 1L, log = T){
   theta <- 0
   
   # 
+  theta_largest_non_na <- 0
+  theta_smallest_non_na <- 0
   theta_largest_negative <- -Inf # Largest theta that gives a negative value so far
   theta_smallest_positive <- Inf # Smallest theta that gives a positive value so far
   
   iter <- 0
   while(abs(theta - theta_old) > 1e-8){
     cumDer <- cumulantDerivatives(theta, x, p, s)
+    
+    # Escape too large jumps in Newton-Raphson
+    if(any(is.na(cumDer))){
+      if(theta > theta_largest_non_na){
+        theta <- (theta+theta_largest_non_na) / 4
+        next
+      } else if (theta < theta_smallest_non_na){
+        theta <- (theta+theta_smallest_non_na) / 4
+        next
+      }
+    } else {
+      theta_largest_non_na <- max(theta, theta_largest_non_na)
+      theta_smallest_non_na <- min(theta, theta_smallest_non_na)
+    }
+    
     # For convergence properties
     iter <- iter + 1
     theta_old <- theta

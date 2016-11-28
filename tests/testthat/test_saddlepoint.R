@@ -85,3 +85,15 @@ test_that("Saddlepoint t == min_score + lattice",{
   
   expect_lt(abs(sp - pb), log(1.05))
 })
+
+test_that("Avoid too large first jumps in Newton Raphson",{
+  dat = data.table(x = rep(1:300, each = 4),
+                   y = c(rep(c(177,177,177,0), 100),
+                         rep(c(170,170,170,0), 100),
+                         rep(c(163,163,163,0), 100)),
+                   probability = c(rep(c(2e-8,2e-8,2e-8,1-6e-8), 100),
+                                   rep(c(4e-8,4e-8,4e-8,1-1.2e-7), 100),
+                                   rep(c(8e-8,8e-8,8e-8,1-2.4e-7), 100)) )
+  
+  sp <- saddlepoint(281, dat = dat, log = F)
+})
