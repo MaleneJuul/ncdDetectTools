@@ -10,8 +10,9 @@ Depends:
 Imports:
     Rcpp (>= 0.12.6),
     data.table,
-    RcppArmadillo
-  Suggests:
+    RcppArmadillo,
+    MatrixModels
+Suggests:
     poibin,
     knitr,
     rmarkdown,
