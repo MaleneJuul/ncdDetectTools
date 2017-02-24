@@ -20,6 +20,6 @@ Imports:
 Description: The core functions of ncdDetect.
 License: GPL (>= 2)
 LinkingTo: Rcpp,
-    RcppArmadillo,
+    RcppArmadillo
 VignetteBuilder: knitr
 RoxygenNote: 5.0.1
