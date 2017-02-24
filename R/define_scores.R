@@ -14,7 +14,7 @@ define_scores <- function(dat, scoring_scheme) {
   # initial checks on input
   if (!("probability_nomut" %in% names(dat))) stop("there needs to be a column named 'probability_nomut")
   
-  score_cols <- grep(pattern = "probability", x = names(dat_copy))
+  score_cols <- grep(pattern = "probability", x = names(dat))
   if (unique(round(rowSums(dat[, score_cols, with = F]), 10)) != 1) stop("columns with predictions must sum to one")
   
   prob_cols <- setdiff(names(dat)[score_cols], "probability_nomut")
