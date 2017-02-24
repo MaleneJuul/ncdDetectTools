@@ -21,6 +21,7 @@ Suggests:
 Description: The core functions of ncdDetect.
 License: GPL (>= 2)
 LinkingTo: Rcpp,
-    RcppArmadillo
+    RcppArmadillo,
+    MatrixModels
 VignetteBuilder: knitr
 RoxygenNote: 5.0.1
