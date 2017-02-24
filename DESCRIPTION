@@ -11,6 +11,7 @@ Imports:
     Rcpp (>= 0.12.6),
     data.table,
     RcppArmadillo
+    MatrixModels
 Suggests:
     poibin,
     knitr,
