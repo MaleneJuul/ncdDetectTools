@@ -21,7 +21,7 @@ ncdDetect <- function(predictions, scores, observations = NA, thres = NA) {
   # Make initial checks on input --------------------------------------------
 
   observation_available <- F
-  if (!is.na(observations[1])) {
+  if (sum(as.numeric(is.na(sample_specific_predictions))) == 0) {
     observation_available <- T
   }
   
@@ -43,13 +43,13 @@ ncdDetect <- function(predictions, scores, observations = NA, thres = NA) {
   }
   
   # row sums of predictions matrix
-  if (unique(rowSums(predictions)) != 1) {
+  if (unique(round(rowSums(predictions),10)) != 1) {
     stop("the row sums of the prediction matrix must sum to one")
   }
 
   # row sums of observations must sum to one (must contain only one 1; the rest must be zero)
   if (observation_available) {
-    if (unique(rowSums(observations)) != 1) {
+    if (unique(round(rowSums(observations), 10)) != 1) {
       stop("each row in the observation matrix must contain one 1, with the rest being zeros")
     }
   }
