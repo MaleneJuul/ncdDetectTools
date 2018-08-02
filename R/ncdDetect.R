@@ -21,7 +21,7 @@ ncdDetect <- function(predictions, scores, observations = NA, thres = NA) {
   # Make initial checks on input --------------------------------------------
 
   observation_available <- F
-  if (sum(as.numeric(is.na(predictions))) == 0) {
+  if (sum(as.numeric(is.na(sample_specific_predictions))) == 0) {
     observation_available <- T
   }
   
